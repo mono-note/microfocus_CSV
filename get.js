@@ -2,14 +2,13 @@ const fs = require('fs'),
   cheerio = require('cheerio'),
   he = require('he'),
   request = require('request'),
-  csv=require('csvtojson')
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+  requestp = require('request-promise'),
+  csv=require('csvtojson'),
+  csvjson = require('csvjson'),
+  CsvReadableStream = require('csv-reader'),
+  createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
-var CsvReadableStream = require('csv-reader');
-
-var inputStream = fs.createReadStream('uri.csv', 'utf8');
-
-
+const csvFilePath = 'uri.csv'
 let post_author = '6'
 let post_parent = '0'
 let info = []
@@ -31,35 +30,49 @@ const csvWriter = createCsvWriter({
     {id: 'page_linklist', title: 'page_linklist'}
   ]
 });
+var data = fs.readFileSync(csvFilePath, { encoding : 'utf8'});
+var options = {
+  delimiter : ',', // optional
+  quote     : '"' // optional
+};
 
+const csvUri = csvjson.toObject(data, options).map(d => d.uri);
 
-// let username = "MicroFocusPV",
-//   password = "Cv3u7PEV",
-//   url = "http://nxtv.coding-dev.work",
-//   auth = "Basic " + new Buffer.from(username + ":" + password).toString("base64");
+const isAuth = true;
 
-csv()
-  .fromFile('uri.csv')
-  .then((jsonObj) => {
-    jsonObj.forEach(ls => {
-      let uri = ls.uri
-      request({
-        url: uri,
-        // headers: {
-        //   "Authorization": auth
-        // }
-      }, function (error, response, html) {
-        if (!error && response.statusCode == 200) {
-          doCheerio(html, uri)
-          // console.log(uri);
-        }
-      })
+if (isAuth) {
+  let errMsg = ''
+  const promises = csvUri.map(url => requestp({
+    uri: url,
+    method: 'GET',
+    auth: {
+      'user': 'MicroFocusPV',
+      'pass': 'Cv3u7PEV'
+    }
+  }).catch(err => {
+    errMsg = err.options.uri;
+    return ''
+  }));
+  Promise.all(promises).then((data) => {
+    data.forEach((valHTML, idx) => {
+      doCheerio(valHTML, csvUri[idx])
     })
-  })
+  }).then(()=> csvWriter.writeRecords(info))
+}else{
+  const promises = csvUri.map(url => requestp(url).catch(err => {
+    errMsg = err.options.uri;
+    return ''
+  }));
+  Promise.all(promises).then((data) => {
+    data.forEach((valHTML, idx) => {
+      doCheerio(valHTML, csvUri[idx])
+    })
+  }).then(()=> csvWriter.writeRecords(info))
+}
+
 
 
 var doCheerio = function (html,uri) {
-  getParentPost(uri)
   const $ = cheerio.load(html);
   let post_title = clsHTML($('h1.heading').html())
   let title = $('title').text()
@@ -79,22 +92,20 @@ var doCheerio = function (html,uri) {
   }
   if ($('.linklist').length != 0) {
     if ($('.linklist').find('.c-ttl-01').length != 0) {
-      let page_linklists = getpage_linklists($('.linklist').find('.c-ttl-01').text())
-
-      if(page_linklists != undefined){
-        page_linklist = page_linklists.name
-      }
+      page_linklist = getpage_linklists($('.linklist').find('.c-ttl-01').text())
     }
   }
   removeACF($)
   let page_content = clsHTML($('.contents').html())
+
+
   info.push({
     "post_title": post_title,
     "post_content": page_content,
     "post_name": post_name,
     "post_author": post_author,
     "post_status": '',
-    "post_parent": '',
+    "post_parent": getParentPost(uri),
     "wp_page_template": '',
     "post_seo_title": title,
     "post_seo_description": description,
@@ -106,8 +117,7 @@ var doCheerio = function (html,uri) {
 
   // let json = JSON.stringify(info); //convert it back to json
   // fs.writeFile('myjsonfile.json', json, 'utf8', function () {}); // write it back
-    csvWriter.writeRecords(info)       // returns a promise
-    .then(() => {});
+
 
 
 }
@@ -194,29 +204,95 @@ var getpage_linklists = function (list) {
       "title": "パートナー"
     },
   ]
-  return llist.find(v => list.match(v.title))
+  return llist.find(v => list.match(v.title)).name
 }
 
 
 let getParentPost = (uri) =>{
-  // console.log(uri.match(/\.html/));
+  let id_parents = [{
+    "name": "about",
+    "id": 139
+  },
+  {
+    "name": "privacy",
+    "id": 641
+  },
+  {
+    "name": "products",
+    "id":2
+  },
+  {
+    "name": "products/cobol",
+    "id":16
+  },
+  {
+    "name": "products/cobol/visualcobol",
+    "id":458
+  },
+  {
+    "name": "products/cobol/whitepaper",
+    "id":500
+  },
+  {
+    "name": "products/cobol/cases-2",
+    "id":1039
+  },
+  {
+    "name": "enterprise",
+    "id": 3
+  },
+  {
+    "name": "devpartner",
+    "id": 4
+  },
+  {
+    "name": "silk",
+    "id": 5
+  },
+  {
+    "name": "change-management",
+    "id": 6
+  },
+  {
+    "name": "corba",
+    "id": 7
+  },
+  {
+    "name": "support",
+    "id":8
+  },
+  {
+    "name": "partners",
+    "id": 9
+  },
+]
+
+  let pathURI = uri.split('/')[3]
   if(uri.match(/\.html/)[0] != null){
-    // console.log(uri);
-// console.log(uri);    // return ''
   }
-
-  // noindex.html
-
-
-  // /products/COBOL/
-  // /products/enterprise/
-  // /products/devpartner/
-  // /products/silk/
-  // /products/change-management/
-  // /products/corba/
-  // /products/SDT/
-  // /products/training/
-  // /products/partners/
-  // privacy
-  // about
+  if(pathURI!= 'products' && uri.split('/').length >5){
+    if(uri.match('/about/') != null){                       return 139
+    }else if(uri.match('/privacy/') != null){               return 641
+    }else if(uri.match('/support/') != null){               return 944
+    }
+  }else if (pathURI == 'products' ){
+    if(uri.split('/').length >6){
+      if(uri.match('/COBOL/') != null){                       return 16
+      }else if(uri.match('/enterprise/') != null){            return 78
+      }else if(uri.match('/devpartner/') != null){            return 80
+      }else if(uri.match('/silk/') != null){                  return 82
+      }else if(uri.match('/change-management/') != null){     return 604
+      }else if(uri.match('/SDT/') != null){                   return 379
+      }else if(uri.match('/training/') != null){
+      }else if(uri.match('/partners/') != null){              return 385
+      }else if(uri.match('/corba/') != null){                 return 376
+      }
+    }else {
+      return 14;
+    console.log(uri);
+      // return 14
+    }
+  }else{
+    return
+  }
 }
