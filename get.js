@@ -1,19 +1,19 @@
 const fs = require('fs'),
   cheerio = require('cheerio'),
   he = require('he'),
-  request = require('request'),
   requestp = require('request-promise'),
-  csv=require('csvtojson'),
   csvjson = require('csvjson'),
-  CsvReadableStream = require('csv-reader'),
-  createCsvWriter = require('csv-writer').createObjectCsvWriter;
+  csvWriter = require('csv-writer');
+let linklist_json = require('./json/linklist.json');
 
-const csvFilePath = 'uri.csv'
-let post_author = '6'
-let post_parent = '0'
-let info = []
-const csvWriter = createCsvWriter({
-  path: './file.csv',
+const csvFilePath = 'uri.csv';
+let post_author = '6',
+ post_status = '',
+ wp_page_template = '';
+let info = [];
+let outputCSV = './file.csv'
+const csvObject = csvWriter.createObjectCsvWriter({
+  path: outputCSV,
   header: [
     {id: 'post_title', title: 'post_title'},
     {id: 'post_content', title: 'post_content'},
@@ -36,18 +36,22 @@ var options = {
   quote     : '"' // optional
 };
 
-const csvUri = csvjson.toObject(data, options).map(d => d.uri);
+const csvUri = csvjson.toObject(data, options).map(d => d.uri.replace(/ +/g,''));
 
 const isAuth = true;
-
+const profile = {
+  host:"http://nxtv.coding-dev.work",
+  username:"MicroFocusPV",
+  password:"Cv3u7PEV"
+}
 if (isAuth) {
   let errMsg = ''
   const promises = csvUri.map(url => requestp({
     uri: url,
     method: 'GET',
     auth: {
-      'user': 'MicroFocusPV',
-      'pass': 'Cv3u7PEV'
+      'user': profile.username,
+      'pass': profile.password
     }
   }).catch(err => {
     errMsg = err.options.uri;
@@ -57,7 +61,7 @@ if (isAuth) {
     data.forEach((valHTML, idx) => {
       doCheerio(valHTML, csvUri[idx])
     })
-  }).then(()=> csvWriter.writeRecords(info))
+  }).then(()=> csvObject.writeRecords(info))
 }else{
   const promises = csvUri.map(url => requestp(url).catch(err => {
     errMsg = err.options.uri;
@@ -67,13 +71,12 @@ if (isAuth) {
     data.forEach((valHTML, idx) => {
       doCheerio(valHTML, csvUri[idx])
     })
-  }).then(()=> csvWriter.writeRecords(info))
+  }).then(()=> csvObject.writeRecords(info))
 }
-
-
 
 var doCheerio = function (html,uri) {
   const $ = cheerio.load(html);
+
   let post_title = clsHTML($('h1.heading').html())
   let title = $('title').text()
   let keywords = $('meta[name="keywords"]').attr('content')
@@ -95,38 +98,54 @@ var doCheerio = function (html,uri) {
       page_linklist = getpage_linklists($('.linklist').find('.c-ttl-01').text())
     }
   }
+
   removeACF($)
+
   let page_content = clsHTML($('.contents').html())
-
-
-  info.push({
-    "post_title": post_title,
-    "post_content": page_content,
-    "post_name": post_name,
-    "post_author": post_author,
-    "post_status": '',
-    "post_parent": getParentPost(uri),
-    "wp_page_template": '',
-    "post_seo_title": title,
-    "post_seo_description": description,
-    "post_seo_keyword": keywords,
-    "page_mv": page_mv,
-    "page_contact_section": page_contact_section,
-    "page_linklist": page_linklist
-  })
-
-  // let json = JSON.stringify(info); //convert it back to json
-  // fs.writeFile('myjsonfile.json', json, 'utf8', function () {}); // write it back
-
-
-
+  if(uri.split('/').length <5){
+    if(uri.replace(profile.host,'') == '/index.html'){
+      info.push({
+        "post_title": '',
+        "post_content": page_content,
+        "post_name": '',
+        "post_author": post_author,
+        "post_status": post_status,
+        "post_parent": '',
+        "wp_page_template": wp_page_template,
+        "post_seo_title": title,
+        "post_seo_description": description,
+        "post_seo_keyword": keywords,
+        "page_mv": '',
+        "page_contact_section": page_contact_section,
+        "page_linklist": page_linklist
+      })
+    }
+  }else{
+    info.push({
+      "post_title": post_title,
+      "post_content": page_content,
+      "post_name": post_name,
+      "post_author": post_author,
+      "post_status": post_status,
+      "post_parent": getParentPost(uri),
+      "wp_page_template": wp_page_template,
+      "post_seo_title": title,
+      "post_seo_description": description,
+      "post_seo_keyword": keywords,
+      "page_mv": page_mv,
+      "page_contact_section": page_contact_section,
+      "page_linklist": page_linklist
+    })
+  }
 }
+
+// global function
 
 var clsHTML = function (str) {
   if (str == null) {
     return
   } else {
-    return he.decode(str.replace(/  /g, "").replace(/\t/g, "").replace(/\n/g, ""));
+    return he.decode(str.replace(/\t/g, "").replace(/\n/g, "").replace(/ +</g,'<').replace(/> +/g,'>'));
   }
 }
 var removeACF = function ($) {
@@ -135,7 +154,6 @@ var removeACF = function ($) {
   $('.linklist').remove();
 }
 var getPage_mv = function (page_mv) {
-
   if (page_mv.match(/-about/g) != null) {
     return 'about'
   } else if (page_mv.match(/-products/g) != null) {
@@ -167,113 +185,17 @@ var getPage_contact = function (sec) {
 }
 
 var getpage_linklists = function (list) {
-  let llist = [{
-      "name": "about",
-      "title": "会社情報"
-    },
-    {
-      "name": "cobol",
-      "title": "COBOL製品"
-    },
-    {
-      "name": "enterprise",
-      "title": "エンタープライズ製品"
-    },
-    {
-      "name": "devpartner",
-      "title": "開発支援ツール"
-    },
-    {
-      "name": "silk",
-      "title": "テストツール"
-    },
-    {
-      "name": "change-management",
-      "title": "構成・変更管理ツール"
-    },
-    {
-      "name": "corba",
-      "title": "分散処理基盤"
-    },
-    {
-      "name": "support",
-      "title": "サポート"
-    },
-    {
-      "name": "partners",
-      "title": "パートナー"
-    },
-  ]
-  return llist.find(v => list.match(v.title)).name
+  return linklist_json.find(v => list.match(v.title)).name
 }
 
-
 let getParentPost = (uri) =>{
-  let id_parents = [{
-    "name": "about",
-    "id": 139
-  },
-  {
-    "name": "privacy",
-    "id": 641
-  },
-  {
-    "name": "products",
-    "id":2
-  },
-  {
-    "name": "products/cobol",
-    "id":16
-  },
-  {
-    "name": "products/cobol/visualcobol",
-    "id":458
-  },
-  {
-    "name": "products/cobol/whitepaper",
-    "id":500
-  },
-  {
-    "name": "products/cobol/cases-2",
-    "id":1039
-  },
-  {
-    "name": "enterprise",
-    "id": 3
-  },
-  {
-    "name": "devpartner",
-    "id": 4
-  },
-  {
-    "name": "silk",
-    "id": 5
-  },
-  {
-    "name": "change-management",
-    "id": 6
-  },
-  {
-    "name": "corba",
-    "id": 7
-  },
-  {
-    "name": "support",
-    "id":8
-  },
-  {
-    "name": "partners",
-    "id": 9
-  },
-]
-
   let pathURI = uri.split('/')[3]
   if(uri.match(/\.html/)[0] != null){
   }
   if(pathURI!= 'products' && uri.split('/').length >5){
-    if(uri.match('/about/') != null){                       return 139
-    }else if(uri.match('/privacy/') != null){               return 641
-    }else if(uri.match('/support/') != null){               return 944
+    if(uri.match('/about/') != null){                         return 139
+    }else if(uri.match('/privacy/') != null){                 return 641
+    }else if(uri.match('/support/') != null){                 return 944
     }
   }else if (pathURI == 'products' ){
     if(uri.split('/').length >6){
@@ -289,8 +211,6 @@ let getParentPost = (uri) =>{
       }
     }else {
       return 14;
-    console.log(uri);
-      // return 14
     }
   }else{
     return

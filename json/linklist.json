@@ -1,0 +1,37 @@
+[{
+  "name": "about",
+  "title": "会社情報"
+},
+{
+  "name": "cobol",
+  "title": "COBOL製品"
+},
+{
+  "name": "enterprise",
+  "title": "エンタープライズ製品"
+},
+{
+  "name": "devpartner",
+  "title": "開発支援ツール"
+},
+{
+  "name": "silk",
+  "title": "テストツール"
+},
+{
+  "name": "change-management",
+  "title": "構成・変更管理ツール"
+},
+{
+  "name": "corba",
+  "title": "分散処理基盤"
+},
+{
+  "name": "support",
+  "title": "サポート"
+},
+{
+  "name": "partners",
+  "title": "パートナー"
+}
+]
