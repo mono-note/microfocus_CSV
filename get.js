@@ -4,7 +4,9 @@ const fs = require('fs'),
   requestp = require('request-promise'),
   csvjson = require('csvjson'),
   csvWriter = require('csv-writer');
+
 let linklist_json = require('./json/linklist.json');
+let parentpost_json = require('./json/parentPost.json');
 
 const csvFilePath = 'uri.csv';
 let post_author = '6',
@@ -190,28 +192,11 @@ var getpage_linklists = function (list) {
 
 let getParentPost = (uri) =>{
   let pathURI = uri.split('/')[3]
-  if(uri.match(/\.html/)[0] != null){
-  }
-  if(pathURI!= 'products' && uri.split('/').length >5){
-    if(uri.match('/about/') != null){                         return 139
-    }else if(uri.match('/privacy/') != null){                 return 641
-    }else if(uri.match('/support/') != null){                 return 944
-    }
-  }else if (pathURI == 'products' ){
-    if(uri.split('/').length >6){
-      if(uri.match('/COBOL/') != null){                       return 16
-      }else if(uri.match('/enterprise/') != null){            return 78
-      }else if(uri.match('/devpartner/') != null){            return 80
-      }else if(uri.match('/silk/') != null){                  return 82
-      }else if(uri.match('/change-management/') != null){     return 604
-      }else if(uri.match('/SDT/') != null){                   return 379
-      }else if(uri.match('/training/') != null){
-      }else if(uri.match('/partners/') != null){              return 385
-      }else if(uri.match('/corba/') != null){                 return 376
-      }
-    }else {
-      return 14;
-    }
+  let pathIndex = uri.split('/')[4]
+  if (pathURI != 'products' && uri.split('/').length > 5) {
+    return parentpost_json.find(v => uri.match(v.name)).parentpost
+  } else if (pathURI == 'products' && pathIndex != 'index.html') {
+    return (uri.split('/').length >6) ? parentpost_json.find(v => uri.match(v.name)).parentpost : parentpost_json.find(v => v.name == 'parent_products').parentpost;
   }else{
     return
   }

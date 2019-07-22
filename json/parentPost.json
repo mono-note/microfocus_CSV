@@ -1,0 +1,55 @@
+[
+  {
+  "name": "/about/",
+  "parentpost": 139
+  },
+  {
+  "name": "/privacy/",
+  "parentpost": 641
+  },
+  {
+  "name": "/support/",
+  "parentpost": 944
+  },
+  {
+  "name": "parent_products",
+  "parentpost": 14
+  },
+  {
+  "name": "/products/COBOL/",
+  "parentpost": 16
+  },
+  {
+  "name": "/products/enterprise/",
+  "parentpost": 78
+  },
+  {
+  "name": "/products/devpartner/",
+  "parentpost": 80
+  },
+  {
+  "name": "/products/silk/",
+  "parentpost": 82
+  },
+  {
+  "name": "/products/change-management/",
+  "parentpost": 604
+  },
+  {
+  "name": "/products/SDT/",
+  "parentpost": 379
+  },
+  {
+  "name": "/products/training/",
+  "parentpost": ""
+  },
+  {
+  "name": "/products/partners/",
+  "parentpost": 385
+  },
+  {
+  "name": "/products/corba/",
+  "parentpost": 379
+  }
+]
+
